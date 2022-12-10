@@ -1,18 +1,21 @@
-import collections 
+from collections import defaultdict
+from OpenGL.GLUT import glutGet, glutKeyboardFunc, glutMotionFunc, glutMouseFunc, glutPassiveMotionFunc, \
+                        glutPostRedisplay, glutSpecialFunc
+from OpenGL.GLUT import GLUT_LEFT_BUTTON, GLUT_RIGHT_BUTTON, GLUT_MIDDLE_BUTTON, \
+                        GLUT_WINDOW_HEIGHT, GLUT_WINDOW_WIDTH, \
+                        GLUT_DOWN, GLUT_KEY_UP, GLUT_KEY_DOWN, GLUT_KEY_LEFT, GLUT_KEY_RIGHT
 import trackball
-import math
-import glfw
-from OpenGL.GL import * 
-from OpenGL.GLU import * 
-from OpenGL.GLUT import * 
+
 
 class Interaction(object):
+
     def __init__(self):
         self.pressed = None
         self.translation = [0, 0, 0, 0]
         self.trackball = trackball.Trackball(theta = -25, distance=15)
         self.mouse_loc = None
-        self.callbacks = collections.defaultdict(list)
+        self.callbacks = defaultdict(list)
+        
         self.register()
 
     def register(self):
@@ -21,6 +24,13 @@ class Interaction(object):
         glutKeyboardFunc(self.handle_keystroke)
         glutSpecialFunc(self.handle_keystroke)
 
+    def register_callback(self, name, func):
+        self.callbacks[name].append(func)
+
+    def trigger(self, name, *args, **kwargs):
+        for func in self.callbacks[name]:
+            func(*args, **kwargs)
+
     def translate(self, x, y, z):
         self.translation[0] += x
         self.translation[1] += y
@@ -28,20 +38,20 @@ class Interaction(object):
 
     def handle_mouse_button(self, button, mode, x, y):
         xSize, ySize = glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT)
-        y = ySize - y
+        y = ySize - y 
         self.mouse_loc = (x, y)
 
         if mode == GLUT_DOWN:
             self.pressed = button
             if button == GLUT_RIGHT_BUTTON:
                 pass
-            elif button == GLUT_LEFT_BUTTON:
+            elif button == GLUT_LEFT_BUTTON: 
                 self.trigger('pick', x, y)
-            elif button == 3:
+            elif button == 3: 
                 self.translate(0, 0, 1.0)
-            elif button == 4:
+            elif button == 4: 
                 self.translate(0, 0, -1.0)
-        else:
+        else: 
             self.pressed = None
         glutPostRedisplay()
 
@@ -78,10 +88,3 @@ class Interaction(object):
         elif key == GLUT_KEY_RIGHT:
             self.trigger('rotate_color', forward=False)
         glutPostRedisplay()
-
-    def register_callback(self, name, func):
-        self.callbacks[name].append(func)
-
-    def trigger(self, name, *args, **kwargs):
-        for func in self.callbacks[name]:
-            func(*args, **kwargs)

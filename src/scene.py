@@ -1,10 +1,7 @@
+import sys
 import numpy
-import glfw
-from OpenGL.GL import * 
-from OpenGL.GLU import * 
-from OpenGL.GLUT import * 
+from node import Sphere, Cube, SnowFigure
 
-import node
 
 class Scene(object):
     PLACE_DEPTH = 15.0
@@ -25,7 +22,7 @@ class Scene(object):
             self.selected_node.select(False)
             self.selected_node = None
 
-        mindist = sys.maxint
+        mindist = 10**9
         closest_node = None
         for node in self.node_list:
             hit, distance = node.pick(start, direction, mat)
@@ -37,14 +34,6 @@ class Scene(object):
             closest_node.depth = mindist
             closest_node.selected_loc = start + direction * mindist
             self.selected_node = closest_node
-
-    def rotate_selected_color(self, forwards):
-        if self.selected_node is None: return
-        self.selected_node.rotate_color(forwards)
-
-    def scale_selected(self, up):
-        if self.selected_node is None: return
-        self.selected_node.scale(up)
 
     def move_selected(self, start, direction, inv_modelview):
         if self.selected_node is None: return
@@ -64,9 +53,9 @@ class Scene(object):
 
     def place(self, shape, start, direction, inv_modelview):
         new_node = None
-        if shape == 'sphere': new_node = node.Sphere()
-        elif shape == 'cube': new_node = node.Cube()
-        elif shape == 'figure': new_node = node.SnowFigure()
+        if shape == 'sphere': new_node = Sphere()
+        elif shape == 'cube': new_node = Cube()
+        elif shape == 'figure': new_node = SnowFigure()
 
         self.add_node(new_node)
 
@@ -76,3 +65,11 @@ class Scene(object):
         translation = inv_modelview.dot(pre_tran)
 
         new_node.translate(translation[0], translation[1], translation[2])
+
+    def rotate_selected_color(self, forwards):
+        if self.selected_node is None: return
+        self.selected_node.rotate_color(forwards)
+
+    def scale_selected(self, up):
+        if self.selected_node is None: return
+        self.selected_node.scale(up)

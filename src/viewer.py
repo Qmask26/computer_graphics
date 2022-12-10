@@ -1,25 +1,36 @@
+from OpenGL.GL import glCallList, glClear, glClearColor, glColorMaterial, glCullFace, glDepthFunc, glDisable, glEnable,\
+                      glFlush, glGetFloatv, glLightfv, glLoadIdentity, glMatrixMode, glMultMatrixf, glPopMatrix, \
+                      glPushMatrix, glTranslated, glViewport, \
+                      GL_AMBIENT_AND_DIFFUSE, GL_BACK, GL_CULL_FACE, GL_COLOR_BUFFER_BIT, GL_COLOR_MATERIAL, \
+                      GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_FRONT_AND_BACK, GL_LESS, GL_LIGHT0, GL_LIGHTING, \
+                      GL_MODELVIEW, GL_MODELVIEW_MATRIX, GL_POSITION, GL_PROJECTION, GL_SPOT_DIRECTION
+from OpenGL.constants import GLfloat_3, GLfloat_4
+from OpenGL.GLU import gluPerspective, gluUnProject
+from OpenGL.GLUT import glutCreateWindow, glutDisplayFunc, glutGet, glutInit, glutInitDisplayMode, \
+                        glutInitWindowSize, glutMainLoop, \
+                        GLUT_SINGLE, GLUT_RGB, GLUT_WINDOW_HEIGHT, GLUT_WINDOW_WIDTH
+
 import numpy
-import glfw
-from OpenGL.GL import * 
-from OpenGL.GLU import * 
-from OpenGL.GLUT import * 
+from numpy.linalg import norm, inv
 
-import interaction
-import node
+from interaction import Interaction
+from primitive import init_primitives, G_OBJ_PLANE
+from node import Sphere, Cube, SnowFigure
+from scene import Scene
 
 
-class Initializer(object):
+class Viewer(object):
     def __init__(self):
         self.init_interface()
         self.init_opengl()
         self.init_scene()
         self.init_interaction()
-        #init_primitives()
+        init_primitives()
 
     def init_interface(self):
         glutInit()
-        glutInitWindowSize(640, 480)
-        glutCreateWindow("3D Modeller")
+        glutInitWindowSize(800, 600)
+        glutCreateWindow("Modeller")
         glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB)
         glutDisplayFunc(self.render)
 
@@ -40,39 +51,42 @@ class Initializer(object):
         glEnable(GL_COLOR_MATERIAL)
         glClearColor(0.4, 0.4, 0.4, 0.0)
 
+
     def init_scene(self):
-        self.scene = node.Scene()
+        self.scene = Scene()
         self.create_sample_scene()
 
     def create_sample_scene(self):
-        cube_node = node.Cube()
+        cube_node = Cube()
         cube_node.translate(2, 0, 2)
-        cube_node.color_index = 2
+        cube_node.color_index = 1
         self.scene.add_node(cube_node)
 
-        sphere_node = node.Sphere()
+        sphere_node = Sphere()
         sphere_node.translate(-2, 0, 2)
         sphere_node.color_index = 3
         self.scene.add_node(sphere_node)
 
-        #hierarchical_node = SnowFigure()
-        #hierarchical_node.translate(-2, 0, -2)
-        #self.scene.add_node(hierarchical_node)
+        hierarchical_node = SnowFigure()
+        hierarchical_node.translate(-2, 0, -2)
+        self.scene.add_node(hierarchical_node)
 
     def init_interaction(self):
-        self.interaction = interaction.Interaction()
+        self.interaction = Interaction()
         self.interaction.register_callback('pick', self.pick)
         self.interaction.register_callback('move', self.move)
         self.interaction.register_callback('place', self.place)
         self.interaction.register_callback('rotate_color', self.rotate_color)
         self.interaction.register_callback('scale', self.scale)
 
+    def main_loop(self):
+        glutMainLoop()
+
     def render(self):
         self.init_view()
 
         glEnable(GL_LIGHTING)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
         glMatrixMode(GL_MODELVIEW)
         glPushMatrix()
         glLoadIdentity()
@@ -82,12 +96,12 @@ class Initializer(object):
 
         currentModelView = numpy.array(glGetFloatv(GL_MODELVIEW_MATRIX))
         self.modelView = numpy.transpose(currentModelView)
-        self.inverseModelView = numpy.inv(numpy.transpose(currentModelView))
+        self.inverseModelView = inv(numpy.transpose(currentModelView))
 
         self.scene.render()
 
         glDisable(GL_LIGHTING)
-        #glCallList(G_OBJ_PLANE)
+        glCallList(G_OBJ_PLANE)
         glPopMatrix()
 
         glFlush()
@@ -113,13 +127,17 @@ class Initializer(object):
         end = numpy.array(gluUnProject(x, y, 0.999))
 
         direction = end - start
-        direction = direction / numpy.norm(direction)
+        direction = direction / norm(direction)
 
         return (start, direction)
 
     def pick(self, x, y):
         start, direction = self.get_ray(x, y)
         self.scene.pick(start, direction, self.modelView)
+
+    def place(self, shape, x, y):
+        start, direction = self.get_ray(x, y)
+        self.scene.place(shape, start, direction, self.inverseModelView)
 
     def move(self, x, y):
         start, direction = self.get_ray(x, y)
@@ -130,10 +148,3 @@ class Initializer(object):
 
     def scale(self, up):
         self.scene.scale_selected(up)
-
-    def place(self, shape, x, y):
-        start, direction = self.get_ray(x, y)
-        self.scene.place(shape, start, direction, self.inverseModelView)
-
-    def main_loop(self):
-        glutMainLoop()
